@@ -152,6 +152,14 @@ export default function App() {
   async function uploadPdf(selectedFile) {
     try {
       setIsUploading(true);
+      // Reset viewer and bookmarks when a new file is selected
+      setIsPdfLoading(true);
+      setTree([]);
+      setNumPages(null);
+      setPageView(1);
+      setScale(1.0);
+      setFileId(null);
+      setOriginalName(null);
       setFile(selectedFile);
       const fd = new FormData();
       fd.append('pdf', selectedFile);
@@ -552,7 +560,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className="flex justify-center">
-                    <Document file={file} onLoadSuccess={onDocumentLoadSuccess} loading={
+                    <Document key={(file && `${file.name}-${file.size}-${file.lastModified}`) || fileId || 'local'} file={file} onLoadSuccess={onDocumentLoadSuccess} loading={
                       <div className="flex h-[480px] items-center justify-center text-gray-500 dark:text-gray-400">Loading PDF…</div>
                     }>
                       <Page pageNumber={pageView} scale={scale} onRenderSuccess={() => setIsPdfLoading(false)} onRenderError={() => setIsPdfLoading(false)} />
