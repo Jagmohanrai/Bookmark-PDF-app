@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 const { outlinePdf } = require('@lillallol/outline-pdf');
+const Tesseract = require('tesseract.js');
 
 const app = express();
 app.use(cors());
@@ -13,12 +14,28 @@ app.use(express.urlencoded({ extended: true }));
 
 // ===== CONFIG =====
 const uploadDir = path.join(__dirname, '../uploads'); // now one level up (root/uploads)
+const imageUploadDir = path.join(__dirname, '../uploads/images'); // separate directory for images
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(imageUploadDir)) fs.mkdirSync(imageUploadDir, { recursive: true });
 
 const KEEP_AFTER_PROCESS = process.env.KEEP_AFTER_PROCESS === 'true';
 const UPLOAD_TTL_HOURS = parseInt(process.env.UPLOAD_TTL_HOURS || '6', 10);
 
 const upload = multer({ dest: uploadDir });
+const imageUpload = multer({
+  dest: imageUploadDir,
+  fileFilter: (req, file, cb) => {
+    // Check if file is an image
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  }
+});
 
 // ===== HELPERS =====
 function safeUnlink(filePath) {
@@ -61,6 +78,90 @@ app.post('/api/upload', upload.single('pdf'), (req, res) => {
   const newPath = path.join(uploadDir, req.file.filename + '.pdf');
   fs.renameSync(oldPath, newPath);
   res.json({ id: req.file.filename + '.pdf', originalName: req.file.originalname });
+});
+
+app.post('/api/upload-image', imageUpload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    // Get file extension from original filename
+    const originalName = req.file.originalname;
+    const fileExtension = path.extname(originalName);
+
+    // Create new filename with timestamp to avoid conflicts
+    const timestamp = Date.now();
+    const newFilename = `img_${timestamp}${fileExtension}`;
+    const oldPath = req.file.path;
+    const newPath = path.join(imageUploadDir, newFilename);
+
+    // Rename the file to include proper extension
+    fs.renameSync(oldPath, newPath);
+
+    // Extract text from the image using Tesseract.js
+    let extractedText = '';
+    try {
+      const result = await Tesseract.recognize(newPath, 'eng', {
+        logger: m => console.log(m)
+      });
+      extractedText = result.data.text.trim();
+    } catch (ocrError) {
+      console.error('OCR error:', ocrError);
+      extractedText = 'Text extraction failed';
+    }
+
+    // Delete the image file after text extraction (since user only needs the text)
+    try {
+      fs.unlinkSync(newPath);
+      console.log(`Deleted processed image: ${newFilename}`);
+    } catch (deleteError) {
+      console.warn(`Failed to delete image ${newFilename}:`, deleteError.message);
+    }
+
+    // Return success response with file info and extracted text
+    res.json({
+      success: true,
+      message: 'Image processed and text extracted successfully',
+      originalName: originalName,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
+      uploadedAt: new Date().toISOString(),
+      extractedText: extractedText
+    });
+
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({
+      error: 'Failed to upload image',
+      details: error.message
+    });
+  }
+});
+
+// Error handling middleware for multer errors
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        error: 'File too large',
+        details: 'Maximum file size is 10MB'
+      });
+    }
+    return res.status(400).json({
+      error: 'File upload error',
+      details: error.message
+    });
+  }
+
+  if (error.message === 'Only image files are allowed!') {
+    return res.status(400).json({
+      error: 'Invalid file type',
+      details: 'Only image files are allowed'
+    });
+  }
+
+  next(error);
 });
 
 app.post('/api/process', async (req, res) => {
@@ -149,5 +250,6 @@ function sweepUploadsDirectory() {
     console.warn('Sweep failed', e.message);
   }
 }
+
 setInterval(sweepUploadsDirectory, 30 * 60 * 1000);
 sweepUploadsDirectory();

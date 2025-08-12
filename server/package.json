@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "express": "^5.1.0",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "tesseract.js": "^6.0.1"
   }
 }
