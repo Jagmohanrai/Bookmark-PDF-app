@@ -1,0 +1,1 @@
+console.log('Build completed. Serve using `npm start`.')
