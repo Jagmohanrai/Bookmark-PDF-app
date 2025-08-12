@@ -133,15 +133,7 @@ export default function App() {
 
   const fileUrlRef = useRef(null);
 
-  // Use environment variable for backend URL, fallback to localhost for development
-  // In production, set VITE_BACKEND_URL to your deployed backend URL
-  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL ||
-    (import.meta.env.DEV ? 'http://localhost:4000' : window.location.origin);
-
-  // Debug logging
-  console.log('Environment:', import.meta.env.MODE);
-  console.log('Backend URL:', BACKEND_BASE_URL);
-  console.log('VITE_BACKEND_URL:', import.meta.env.VITE_BACKEND_URL);
+  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
   function showToast(message, type = 'info', timeoutMs = 3000) {
     const id = uuidv4();
