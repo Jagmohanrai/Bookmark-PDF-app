@@ -133,7 +133,13 @@ export default function App() {
 
   const fileUrlRef = useRef(null);
 
-  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+  // For monolithic apps: use localhost in development, relative URLs in production
+  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL ||
+    (import.meta.env.DEV ? 'http://localhost:4000' : '');
+
+  // Debug logging to help troubleshoot
+  console.log('Environment:', import.meta.env.MODE);
+  console.log('Backend URL:', BACKEND_BASE_URL || 'Using relative URLs (same domain)');
 
   function showToast(message, type = 'info', timeoutMs = 3000) {
     const id = uuidv4();
