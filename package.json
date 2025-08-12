@@ -6,8 +6,9 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:frontend\"",
     "dev:server": "nodemon server/index.js",
     "dev:frontend": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "build": "cd frontend && npm install && npm run build",
+    "render-postbuild": "npm run build"
   },
   "dependencies": {
     "@lillallol/outline-pdf": "^1.0.2",

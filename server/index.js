@@ -12,7 +12,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ===== CONFIG =====
-const uploadDir = path.join(__dirname, 'uploads'); // stays in root folder now
+const uploadDir = path.join(__dirname, '../uploads'); // now one level up (root/uploads)
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const KEEP_AFTER_PROCESS = process.env.KEEP_AFTER_PROCESS === 'true';
@@ -115,16 +115,11 @@ app.post('/api/process', async (req, res) => {
 
 // ===== SERVE FRONTEND IN PRODUCTION =====
 if (process.env.NODE_ENV === 'production') {
-  const frontendPath = path.join(__dirname, 'frontend', 'dist'); // relative to root
+  const frontendPath = path.join(__dirname, '../frontend/dist');
   app.use(express.static(frontendPath));
 
   app.get('*', (req, res) => {
-    const indexFile = path.join(frontendPath, 'index.html');
-    if (fs.existsSync(indexFile)) {
-      res.sendFile(indexFile);
-    } else {
-      res.status(404).send('Not found');
-    }
+    res.sendFile(path.join(frontendPath, 'index.html'));
   });
 }
 
